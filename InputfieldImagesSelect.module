@@ -1,0 +1,265 @@
+<?php
+
+
+
+class InputfieldImagesSelect extends Inputfield implements InputfieldItemList{
+
+
+    public static function getModuleInfo() {
+        return array(
+            'title' => __('Images Select', __FILE__),
+            'version' => 1,
+            'summary' => __('Select remote stored image pages to add to an page', __FILE__),
+            'permanent' => false,
+            'requires' => 'FieldtypeImagesSelect',
+            );
+    }
+
+    public function init() {
+        parent::init();
+        $this->modules->JqueryMagnific;
+        $this->set('itemClass', 'InputfieldFileItem InputfieldImage ui-widget');
+
+    }
+
+    protected function pagefileId(RemoteImage $remoteImage) {
+        return $this->name . "_" . $remoteImage->id;
+    }
+
+
+    public function ___render() {
+        $out = '';
+        $n = 0;
+        $ids = array();
+
+        // if(!count($this->value)) return "<p>" . $this->_('There are currently no items to display.') . "</p>";
+
+        $out = "\n<ul class='InputfieldImagesSelectList ui-helper-clearfix'>";
+        foreach($this->value as $image) {
+            $out .= $this->renderItemWrap($this->renderItem($image, $n++));
+            $ids[] = $image->id;
+        }
+        $out .= $this->renderItemWrap($this->renderItem(new RemoteImage, 0, true), true);
+        $out .= "\n</ul>";
+
+        // ids used to know what ids to look for in processInput()
+        $out .= "<input class='InputfieldImagesIds' type='text' name='{$this->name}_imagesIds' id='{$this->name}_imagesIds' value='".implode($ids, ",")."'>";
+        $out .= $this->renderAddImages();
+
+        return $out;
+    }
+
+
+    protected function renderItemWrap($out, $template = false) {
+        $class = $template ? " template": "";
+        return  "\n\t<li class='{$this->itemClass}{$class}'>$out\n\t</li>";
+    }
+
+
+    protected function ___renderItem(RemoteImage $file, $n, $template = false) {
+        if($template) {
+            $out = $this->renderItemMarkup(0, 0, "", "", "", "", "", "", "", 0);
+        } else {
+            $slug = $this->pagefileId($file);
+            $pagefile = $file->imagepage->image->first;
+            $thumb = $file->imagepage->image->first->size(0,100);
+            $description = $file->description;
+            $out = $this->renderItemMarkup($file->id, $slug, $pagefile->basename, $pagefile->filesizeStr, $pagefile->width, $pagefile->height, $pagefile->url, $thumb->url, $description, $n);
+        }
+
+        return $out;
+    }
+
+    protected function renderItemMarkup($id, $slug, $basename, $filesizeStr, $width, $height, $url, $thumbUrl, $description, $n) {
+        $moduleID = $this->modules->getModuleId("ProcessPageEdit");
+        $editUrl = $this->pages->get("process=$moduleID")->url;
+
+        $out =  "\n\t\t<p class='InputfieldFileInfo InputfieldItemHeader ui-widget ui-widget-header'>" .
+            "\n\t\t\t<span class='ui-icon ui-icon-arrowthick-2-n-s HideIfSingle'></span>" .
+            "\n\t\t\t<span class='ui-icon ui-icon-arrowthick-1-e HideIfMultiple'></span>" .
+            "\n\t\t\t<span class='InputfieldFileName'>{$basename}</span> " .
+            "\n\t\t\t<span class='InputfieldFileStats'>&bull; {$filesizeStr} &bull; {$width}x{$height}</span> " .
+            "\n\t\t\t<label class='InputfieldFileDelete'><input type='checkbox' name='delete_$slug' value='1' /><span class='ui-icon ui-icon-trash'>Delete</span></label>" .
+            "\n\t\t\t<a class='InputfieldFileMove InputfieldFileMoveBottom' href='#'><span class='ui-icon ui-icon-arrowthickstop-1-s'></span></a> " .
+            "\n\t\t\t<a class='InputfieldFileMove InputfieldFileMoveTop' href='#'><span class='ui-icon ui-icon-arrowthickstop-1-n'></span></a> " .
+            "\n\t\t</p>" .
+            "\n\t\t<p class='InputfieldFileData ui-widget ui-widget-content'>" .
+            "\n\t\t\t<a class='InputfieldFileLink' target='_blank' href='{$url}'><img src='{$thumbUrl}' alt='{$basename}' /></a>" .
+            "\n\t\t\t<span class='InputfieldFileDescription'><label for='description_$slug' class='detail'>Description</label><textarea id='description_$slug' name='description_$slug' rows='2'>$description</textarea></span>" .
+            "\n\t\t\t<span class='InputfieldFileEdit'><a href='{$editUrl}?id={$id}' target='_blank'><i class='fa fa-edit'></i> Edit original image</a></span>" .
+            "\n\t\t\t<input class='InputfieldFileSort' type='text' name='sort_$slug' value='$n' />" .
+            "\n\t\t\t<input class='InputfieldFileRemoteImage' type='text' name='remoteimage_$slug' value='{$id}' />" .
+            "\n\t\t</p>";
+
+        return $out;
+
+    }
+
+    public function renderAddImages() {
+        $out = '';
+
+        $out .= "<div class='ImagesSelectSearch ui-helper-clearfix'>";
+        // $out .= "<div class='InputfieldContent ui-widget ui-widget-content'>";
+        // $out .= "<p><a href='#'>Neues Bild hinzufügen</a></p>";
+        $out .= $this->renderImagesSearchForm()->render();
+        // $out .= "</div>";
+        $out .= "</div>";
+
+        return $out;
+    }
+
+
+    public function renderImagesSearchForm() {
+
+        $wrapper = new InputfieldWrapper;
+
+        $fieldset = $this->modules->InputfieldFieldset;
+        $fieldset->label = $this->_("Search and add images");
+        $fieldset->set("id", $this->name . "_filterFormImagesSelect");
+        $fieldset->icon = "plus";
+        $fieldset->collapsed = Inputfield::collapsedYes;
+
+        $field = $this->modules->InputfieldSelector;
+        $field->attr("name", $this->name . "_selectorImagesSelect");
+        $field->initValue = "template=image, sort=-modified";
+        $field->value = "title%=";
+        $field->showInitValue = true;
+        $field->counter = false;
+        $field->preview = false;
+        $field->label = $this->_("Filter");
+        $field->columnWidth = 100;
+        $fieldset->add($field);
+
+        // $field = $this->modules->InputfieldText;
+        // $field->attr("name", $this->name . "_queryImagesSelect");
+        // $field->label = "Suche";
+        // $field->columnWidth = 50;
+        // $fieldset->add($field);
+
+        // $field = $this->modules->InputfieldSelect;
+        // $field->attr("name", $this->name . "_categoryFilterImagesSelect");
+        // $field->label = "Kategorie";
+        // foreach($this->pages->find("template=category-images") as $cat) {
+        //     $field->addOption($cat->id, $cat->title . " (" . $cat->numChildren() .")");
+        // }
+        // $field->columnWidth = 50;
+        // $fieldset->add($field);
+
+        $field = $this->modules->InputfieldHidden;
+        $field->attr("name", $this->name . "_filterImagesIsSearching");
+        $field->attr("value", 0);
+        $fieldset->add($field);
+
+        $moduleID = $this->modules->getModuleId("ProcessImagesSearch");
+        $url = $this->pages->get("process=$moduleID")->url;
+        $field = $this->modules->InputfieldMarkup;
+        $field->attr("name", $this->name . "_resultsMarkupField");
+        $field->label = $this->_("Result");
+        $field->showIf = $this->name . "_filterImagesIsSearching>0";
+        $field->value = "<div id='{$this->name}_resultsOutput'>...</div>
+                <script>
+                    // init the ajax search field
+                    $(document).ready(function() {
+                        ImagesSelectSearch.init('{$this->name}', '$url');
+                    });
+                </script>";
+        $fieldset->add($field);
+        $wrapper->add($fieldset);
+
+        if($this->modules->isInstalled("ImagesManager")){
+            $this->modules->get("ImagesManager");
+            if($this->user->isSuperuser() || $this->user->hasPermission("images-manager")){
+                $href = $this->pages->get(2)->find('name=imagesmanager, include=all')->first()->url;
+                $btn = $this->modules->get('InputfieldButton');
+                $btn->href = $href;
+                $btn->attr('id','imagesmanager_' . $this->name);
+                $btn->wrapClass = "imagesmanager-button"; // for js to trigger modal
+                $btn->value = $this->_('Images Manager');
+
+                $wrapper->add($btn);
+                $moduleID = $this->modules->getModuleID("ImagesManager");
+                $this->config->js("images_manager", array("url" => $this->pages->get("template=admin, process=$moduleID")->url));
+            }
+        }
+
+
+        return $wrapper;
+
+    }
+
+
+    public function ___processInput(WireInputData $input) {
+
+        $changed = false;
+
+        $name = $this->name;
+
+        $ids = $input[$name . "_imagesIds"];
+        $ids = explode(",",$ids);
+
+        $existingIds = $this->value->explode("id");
+
+        if(count($ids) > count($this->value)){
+            // new ones found?
+            foreach($ids as $id){
+                if(!$id) continue;
+                if(!in_array($id, $existingIds)){
+                    $this->processInputAddFile($id);
+                }
+            }
+        }
+
+        $n = 0;
+
+        // print_r($input);
+        // $key = 'sort_select_images_1273';
+        // echo (int) $input->$key;
+        // exit;
+
+        foreach($this->value as $remoteimage) {
+
+            $id = $remoteimage->id;
+
+            if(isset($input['delete_' . $name . '_' . $id])) {
+                $this->value->remove($remoteimage);
+                if($key = array_search($id, $ids)) {
+                    unset($ids[$key]);
+                }
+                $changed = true;
+            }
+
+            if(isset($input['description_' . $name . '_' . $id])) {
+                $remoteimage->description = $input['description_' . $name . '_' . $id];
+                $changed = true;
+            }
+
+            $key = "sort_{$name}_{$id}";
+            $val = (int) $input->$key;
+            if($val !== NULL) {
+                $remoteimage->sort = $val;
+                if($n !== $val) $changed = true;
+            }
+
+            $n++;
+        }
+
+        if($changed) {
+            $this->value->sort('sort');
+            $this->trackChange('value');
+        }
+
+        return $this;
+
+    }
+
+
+    public function processInputAddFile($id){
+        $new = new RemoteImage();
+        $new->id = $id;
+        $new->description = $this->sanitizer->text($this->input->post["description_" . $this->name . "_" . $id]);
+        $new->sort = (int) $this->input->post["sort_" . $this->name . "_" . $id];
+        $this->value->append($new);
+        return $this;
+    }
+
+}

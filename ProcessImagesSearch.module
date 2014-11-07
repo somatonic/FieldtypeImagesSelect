@@ -1,0 +1,99 @@
+<?php
+
+
+
+class ProcessImagesSearch extends Process{
+
+
+
+    public static function getModuleInfo() {
+        return array(
+            'title' => __('Images Search', __FILE__),
+            'version' => 1,
+            'summary' => __('Search Images used in InputfieldImagesSelect to find images via ajax.', __FILE__),
+            'permanent' => false,
+            'page' => array(          // optionally install/uninstall a page for this process automatically
+                'name' => 'imagesearch',  // name of page to create
+                'parent' => 3,    // parent name (under admin) or omit or blank to assume admin root
+                'title' => 'ImagesSearch',     // title of page, or omit to use the title already specified above
+                )
+            );
+    }
+
+    public function init(){
+        $this->modules->MarkupAdminDataTable;
+
+    }
+
+    public function execute(){
+
+        if($this->config->ajax){
+
+            $selector = '';
+            $default_selector = 'template=image, sort=-modified, limit=20,';
+            $selector = $this->sanitizer->text($this->input->selector);
+
+            if(strlen($selector)){
+
+                $this->input->whitelist("selector", $selector);
+
+                // if(strpos($selector, " ") !== false) $split = true;
+
+                // if($split){
+                //     $terms = explode(" ", $selector);
+                //     foreach($terms as $term) {
+                //         $selector .= ",(title|meta_description%=$term)";
+                //     }
+                // } else {
+                //     $selector .= ",title|meta_description%=$selector";
+                // }
+
+                $results = $this->pages->find($default_selector . $selector);
+
+                if(count($results)){
+                    $table = $this->modules->MarkupAdminDataTable;
+                    $table->setEncodeEntities(false);
+                    $table->headerRow(array(
+                        "Bild",
+                        "Beschrieb",
+                        "Quelle",
+                        "Created",
+                        "Modified",
+                        "",
+                        ));
+
+                    $moduleID = $this->modules->getModuleId("ProcessPageEdit");
+                    $editUrl = $this->pages->get("process=$moduleID")->url;
+
+                    foreach($results as $result){
+                        $descr = $result->meta_description;
+                        $table->row(array(
+                            "<img src='{$result->image->first->size(0,100)->url}'/>",
+                            $result->meta_description . "<br><a href='$editUrl?id={$result->id}' target='_blank'><i class='fa fa-edit'></i> Bild bearbeiten</a>",
+                            $result->select_quelle->count ? $result->select_quelle->implode("|","title") : $result->quelle_text,
+                            date("d.m.Y H:i:s", $result->created),
+                            date("d.m.Y H:i:s", $result->modified),
+                            "<button class='ui-button ui-widget ui-state-default ImagesSearch_resultAdd'
+                                data-id='{$result->id}'
+                                data-descr='{$descr}'
+                                data-basename='{$result->image->first->basename}'
+                                data-url='{$result->image->first->url}'
+                                title='dieses Bild hinzufügen'
+                                ><i class='fa fa-plus'></i></button>",
+                            ));
+                    }
+
+                    return $table->render();
+                } else {
+                    return "nothing found";
+                }
+
+            }
+        } else {
+
+
+        }
+
+    }
+
+}

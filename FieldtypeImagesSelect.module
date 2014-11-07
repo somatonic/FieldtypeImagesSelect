@@ -1,0 +1,140 @@
+<?php
+
+$dirname = dirname(__FILE__);
+require_once($dirname . "/RemoteImage.php");
+require_once($dirname . "/RemoteImages.php");
+
+
+class FieldtypeImagesSelect extends FieldtypeMulti implements Module{
+
+    public static function getModuleInfo() {
+        return array(
+            'title' => __('Images Select', __FILE__),
+            'version' => 1,
+            'summary' => __('Select remote stored image pages to add to an page', __FILE__),
+            'permanent' => false,
+            'installs' => array('InputfieldImagesSelect'),
+            );
+    }
+
+
+
+    public function getBlankValue(Page $page, Field $field) {
+        $imagesArray = new RemoteImages;
+        $imagesArray->setPage($page);
+        $imagesArray->setTrackChanges(true);
+        return $imagesArray;
+    }
+
+
+    public function getInputfield(Page $page, Field $field) {
+        $inputfield = $this->modules->get('InputfieldImagesSelect');
+        if(!$inputfield) return null;
+        $inputfield->class = $this->className();
+        return $inputfield;
+    }
+
+
+    public function getMatchQuery($query, $table, $subfield, $operator, $value) {
+
+        if(in_array($operator, array("*=", "~=", "%=", "^=", "$="))) {
+            // fulltext match filename or description
+            $ft = new DatabaseQuerySelectFulltext($query);
+            $ft->match($table, $subfield, $operator, $value);
+
+        } else {
+            $query = parent::getMatchQuery($query, $table, $subfield, $operator, $value);
+        }
+        return $query;
+    }
+
+
+    public function ___sleepValue(Page $page, Field $field, $value) {
+
+        $sleepValue = array();
+        if(!$value instanceof RemoteImages) return $sleepValue;
+
+        foreach($value as $remoteimage) {
+            $item = array(
+                'data' => $remoteimage->id,
+                'description' => $remoteimage->description(),
+                );
+
+            $sleepValue[] = $item;
+
+        }
+        return $sleepValue;
+    }
+
+
+    /**
+     * Process the value to convert it from array to whatever object it needs to be
+     *
+     */
+    public function ___wakeupValue(Page $page, Field $field, $value) {
+
+        if($value instanceof RemoteImages) return $value;
+        $imagesArray = $this->getBlankValue($page, $field);
+        if(empty($value)) return $imagesArray;
+        if(!is_array($value)) $value = array($value);
+
+        foreach($value as $item) {
+
+            if(!is_array($item)) continue;
+
+            $remoteImage = new RemoteImage();
+
+            $imagePage = $this->pages->get((int)$item['data']);
+
+            // image page not found, maybe it got deleted
+            if(!$imagePage->id) continue;
+
+            $imagePage->of(false);
+
+            $remoteImage->set("id", $imagePage->id);
+            $remoteImage->set("image", $imagePage->image->first);
+
+            foreach($item as $key => $val) {
+                if($key == "data") {
+                    $remoteImage->set("imagepage", $imagePage);
+                } else if($key == "description"){
+                    if(!strlen($val)) {
+                        $remoteImage->set("description", $imagePage->meta_description);
+                    } else {
+                        $remoteImage->set("description", $val);
+                    }
+                } else {
+                    $remoteImage->set($key, $val);
+                }
+
+            }
+
+            $remoteImage->resetTrackChanges(true);
+            $imagesArray->add($remoteImage);
+        }
+
+        $imagesArray->resetTrackChanges(true);
+
+        return $imagesArray;
+    }
+
+
+    /**
+     * Schema for the Fieldtype
+     *
+     */
+    public function getDatabaseSchema(Field $field) {
+
+        $schema = parent::getDatabaseSchema($field);
+        $schema['data'] = 'int NOT NULL';
+        $schema['description'] = "text NOT NULL";
+
+        $schema['keys']['data'] = 'KEY data (data, pages_id, sort)';
+        $schema['keys']['description'] = 'FULLTEXT KEY `description` (`description`)';
+
+        return $schema;
+    }
+
+
+
+}

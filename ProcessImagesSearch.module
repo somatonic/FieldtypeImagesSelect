@@ -9,20 +9,27 @@ class ProcessImagesSearch extends Process{
     public static function getModuleInfo() {
         return array(
             'title' => __('Images Search', __FILE__),
-            'version' => 1,
+            'version' => 11,
             'summary' => __('Search Images used in InputfieldImagesSelect to find images via ajax.', __FILE__),
             'permanent' => false,
             'page' => array(          // optionally install/uninstall a page for this process automatically
-                'name' => 'imagesearch',  // name of page to create
+                'name' => 'imagessearch',  // name of page to create
                 'parent' => 3,    // parent name (under admin) or omit or blank to assume admin root
                 'title' => 'ImagesSearch',     // title of page, or omit to use the title already specified above
-                )
+                ),
+            'permission' => 'image-search'
             );
     }
 
     public function init(){
         $this->modules->MarkupAdminDataTable;
 
+        $this->imageTpl = $this->wire("modules")->ImagesManager->imagesPageTemplate;
+        $this->imagesRoot = $this->wire("modules")->ImagesManager->imagesRoot;
+        $this->imagesFieldName = $this->wire("modules")->ImagesManager->imagesFieldName;
+        if(!$this->imageTpl) throw new WireException("imagesPageTemplate not configured in ImagesManager");
+        if(!$this->imagesRoot) throw new WireException("imagesRoot not configured in ImagesManager");
+        if(!$this->imagesFieldName) throw new WireException("imagesFieldName not configured in ImagesManager");
     }
 
     public function execute(){
@@ -30,22 +37,23 @@ class ProcessImagesSearch extends Process{
         if($this->config->ajax){
 
             $selector = '';
-            $default_selector = 'template=image, sort=-modified, limit=20,';
+            $default_selector = "has_parent={$this->imagesRoot}, template={$this->imageTpl}, {$this->imagesFieldName}.count>0, sort=-modified, limit=50, ";
             $selector = $this->sanitizer->text($this->input->selector);
-
+            $this->wire("log")->save("imagesmanager", "selector: " . $selector);
             if(strlen($selector)){
 
-                $this->input->whitelist("selector", $selector);
+                // $this->input->whitelist("selector", $term);
 
-                // if(strpos($selector, " ") !== false) $split = true;
+                // $split = false;
+                // if(strpos($term, " ") !== false) $split = true;
 
                 // if($split){
-                //     $terms = explode(" ", $selector);
-                //     foreach($terms as $term) {
-                //         $selector .= ",(title|meta_description%=$term)";
+                //     $terms = explode(" ", $term);
+                //     foreach($terms as $_term) {
+                //         $search_selector .= ",(meta_description%=$_term)";
                 //     }
                 // } else {
-                //     $selector .= ",title|meta_description%=$selector";
+                //     $search_selector .= ",meta_description%=$term";
                 // }
 
                 $results = $this->pages->find($default_selector . $selector);
@@ -53,39 +61,58 @@ class ProcessImagesSearch extends Process{
                 if(count($results)){
                     $table = $this->modules->MarkupAdminDataTable;
                     $table->setEncodeEntities(false);
+                    $table->setSortable(false);
                     $table->headerRow(array(
                         "Bild",
                         "Beschrieb",
-                        "Quelle",
-                        "Created",
+                        "Produktion",
                         "Modified",
-                        "",
+                        "Action",
                         ));
 
                     $moduleID = $this->modules->getModuleId("ProcessPageEdit");
                     $editUrl = $this->pages->get("process=$moduleID")->url;
 
                     foreach($results as $result){
-                        $descr = $result->meta_description;
-                        $table->row(array(
-                            "<img src='{$result->image->first->size(0,100)->url}'/>",
-                            $result->meta_description . "<br><a href='$editUrl?id={$result->id}' target='_blank'><i class='fa fa-edit'></i> Bild bearbeiten</a>",
-                            $result->select_quelle->count ? $result->select_quelle->implode("|","title") : $result->quelle_text,
-                            date("d.m.Y H:i:s", $result->created),
-                            date("d.m.Y H:i:s", $result->modified),
-                            "<button class='ui-button ui-widget ui-state-default ImagesSearch_resultAdd'
+                        $descr = $result->summary;
+                        $path = $result->parent->path;
+
+                        // $fieldProduction = $this->fields->get("select_production");
+                        // $fieldProductionType = $fieldProduction->type; // FieldtypePage
+                        // $production = $fieldProductionType->markupValue($result, $fieldProduction);
+
+                        $production = $result->select_production->title ?: "-";
+                        $production .= $result->select_production->select_seasons ? " - (" . $result->select_production->select_seasons->implode(", ","title") . ")" : "";
+
+                        $button = '';
+                        $thumb = 'kein Bild erfasst!';
+
+                        if($result->get("$this->imagesFieldName")->count){
+                            $thumbUrl = $result->get("$this->imagesFieldName")->first->size(0,100)->url;
+                            $thumb = "<img src='{$thumbUrl}'/>";
+
+                            $basename = $result->get("$this->imagesFieldName")->first->basename;
+                            $url = $result->get("$this->imagesFieldName")->first->url;
+                            $button = "<button class='ui-button ui-widget ui-state-default ImagesSearch_resultAdd'
                                 data-id='{$result->id}'
                                 data-descr='{$descr}'
-                                data-basename='{$result->image->first->basename}'
-                                data-url='{$result->image->first->url}'
+                                data-basename='{$basename}'
+                                data-url='{$url}'
                                 title='dieses Bild hinzufügen'
-                                ><i class='fa fa-plus'></i></button>",
-                            ));
+                                ><i class='fa fa-plus'></i></button>";
+                        }
+                        $table->row(array(
+                            $thumb,
+                            $descr . "$path<br><a href='$editUrl?id={$result->id}' class='pw-modal' data-buttons='#submit_save'><i class='fa fa-edit'></i> Bild bearbeiten</a>",
+                            $production,
+                            date("d.m.Y H:i:s", $result->modified),
+                            $button,
+                        ));
                     }
 
                     return $table->render();
                 } else {
-                    return "nothing found";
+                    return $this->_("nothing found");
                 }
 
             }

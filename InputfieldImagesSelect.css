@@ -1,14 +1,39 @@
+div[id*='_resultsOutput']{
+       width: 100%;
+}
+
+div[id*='_resultsOutput'] .AdminDataTable{
+       width: 100%;
+       /*table-layout: fixed;*/
+}
+div[id*='_resultsOutput'] .AdminDataTable tbody td .text{
+
+       word-wrap: break-word;
+}
 
 div[id*='_resultsOutput'] .AdminDataTable tbody td:first-child{
-       width: 25%;
-       min-width: 20%;
+       width: 10%;
+       min-width: 10%;
+}
+
+
+
+div[id*='_resultsOutput'] .AdminDataTable tbody td:last-child{
+       width: 10%;
+       min-width: 10%;
 }
 
 .content div[id*='_resultsOutput'] .AdminDataTable tbody tr td{
-       font-size: 0.9em;
+    font-size: 0.9em;
+    word-wrap: break-word;
 }
 
-
+.Inputfields > li > .ui-widget-content > ul.InputfieldImagesSelectList,
+.Inputfields > li > .InputfieldContent > ul.InputfieldImagesSelectList {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
 /* copied from the image css */
 
 .Inputfields > li > .ui-widget-content > ul.InputfieldImagesSelectList > li,
@@ -18,51 +43,51 @@ div[id*='_resultsOutput'] .AdminDataTable tbody td:first-child{
     cursor: move;
 }
 
-    .InputfieldItemList .InputfieldContent.ui-state-hover {
+    .InputfieldImagesSelectList .InputfieldContent.ui-state-hover {
         /* ajax upload drag over */
         background: none;
     }
 
 
-    ul.InputfieldImagesSelectList li .InputfieldFileInfo,
-    .AjaxUpload .InputfieldFileInfo {
+    ul.InputfieldImagesSelectList li .InputfieldImagesSelectInfo,
+    .AjaxUpload .InputfieldImagesSelectInfo {
         padding: 3px 0;
         margin-bottom: 0;
         margin-top: 0;
     }
-    ul.InputfieldImagesSelectList li .InputfieldFileInfo .InputfieldFileName {
+    ul.InputfieldImagesSelectList li .InputfieldImagesSelectInfo .InputfieldImagesSelectName {
         font-weight: bold;
     }
-        ul.InputfieldImagesSelectList li .InputfieldFileInfo .InputfieldFileName:hover {
+        ul.InputfieldImagesSelectList li .InputfieldImagesSelectInfo .InputfieldImagesSelectName:hover {
             text-decoration: underline;
             background: none;
         }
 
-    ul.InputfieldImagesSelectList li .InputfieldFileInfo .InputfieldFileStats,
-    .AjaxUpload .InputfieldFileStats {
+    ul.InputfieldImagesSelectList li .InputfieldImagesSelectInfo .InputfieldImagesSelectStats,
+    .AjaxUpload .InputfieldImagesSelectStats {
         opacity: 0.65;
         font-size: 0.9166666em;
     }
 
-    ul.InputfieldImagesSelectList li .ui-state-error .InputfieldFileName {
+    ul.InputfieldImagesSelectList li .ui-state-error .InputfieldImagesSelectName {
         text-decoration: line-through;
     }
 
-    ul.InputfieldImagesSelectList li .InputfieldFileDelete {
+    ul.InputfieldImagesSelectList li .InputfieldImagesSelectDelete {
         float: right;
     }
-        ul.InputfieldImagesSelectList li .InputfieldFileDelete,
-        ul.InputfieldImagesSelectList li .InputfieldFileDelete input {
+        ul.InputfieldImagesSelectList li .InputfieldImagesSelectDelete,
+        ul.InputfieldImagesSelectList li .InputfieldImagesSelectDelete input {
             display: inline;
             font-weight: normal;
         }
-            ul.InputfieldImagesSelectList li .InputfieldFileDelete input {
+            ul.InputfieldImagesSelectList li .InputfieldImagesSelectDelete input {
                 position: absolute;
                 top: 0;
                 right: 0;
                 display: none;
             }
-            ul.InputfieldImagesSelectList li .InputfieldFileDelete span.ui-icon {
+            ul.InputfieldImagesSelectList li .InputfieldImagesSelectDelete span.ui-icon {
                 float: right;
                 padding: 0 2px;
                 cursor: pointer;
@@ -72,25 +97,25 @@ div[id*='_resultsOutput'] .AdminDataTable tbody td:first-child{
         float: left;
     }
 
-    .InputfieldFileEmpty .HideIfEmpty,
-    .InputfieldFileSingle .HideIfSingle,
-    .InputfieldFileMultiple .HideIfMultiple {
+    .InputfieldImagesSelectEmpty .HideIfEmpty,
+    .InputfieldImagesSelectSingle .HideIfSingle,
+    .InputfieldImagesSelectMultiple .HideIfMultiple {
         display: none !important;
     }
 
-    ul.InputfieldImagesSelectList li .InputfieldFileData {
+    ul.InputfieldImagesSelectList li .InputfieldImagesSelectData {
         margin-top: 0;
         margin-bottom: 0;
         padding: 1em;
     }
 
-    ul.InputfieldImagesSelectList li .InputfieldFileLink {
+    ul.InputfieldImagesSelectList li .InputfieldImagesSelectLink {
         font-weight: bold;
         margin: 0.5em 0;
     }
 
-    ul.InputfieldImagesSelectList li .InputfieldFileTags,
-    ul.InputfieldImagesSelectList li .InputfieldFileDescription {
+    ul.InputfieldImagesSelectList li .InputfieldImagesSelectTags,
+    ul.InputfieldImagesSelectList li .InputfieldImagesSelectDescription {
         font-weight: normal;
         margin: 0;
         /*
@@ -100,20 +125,20 @@ div[id*='_resultsOutput'] .AdminDataTable tbody td:first-child{
         margin: -0.25em 0 0 0;
         */
     }
-        ul.InputfieldImagesSelectList li .InputfieldFileTags input,
-        ul.InputfieldImagesSelectList li .InputfieldFileDescription input {
+        ul.InputfieldImagesSelectList li .InputfieldImagesSelectTags input,
+        ul.InputfieldImagesSelectList li .InputfieldImagesSelectDescription input {
             width: 100%;
         }
 
-        ul.InputfieldImagesSelectList li .InputfieldFileTags input {
+        ul.InputfieldImagesSelectList li .InputfieldImagesSelectTags input {
             margin-bottom: 0.5em;
         }
 
 
     .InputfieldImagesSelect .InputfieldImagesIds,
-    ul.InputfieldImagesSelectList li .InputfieldFileSort,
-    ul.InputfieldImagesSelectList li .InputfieldFileRemoteImage {
-        display: none;
+    ul.InputfieldImagesSelectList li .InputfieldImagesSelectSort,
+    ul.InputfieldImagesSelectList li .InputfieldImagesSelectRemoteImage {
+        display: none!important;
     }
 
     ul.InputfieldImagesSelectListBlank + p.description {
@@ -155,37 +180,35 @@ div[id*='_resultsOutput'] .AdminDataTable tbody td:first-child{
 
 
 
-
-
 .InputfieldImagesSelect img {
     max-width: 90%;
 }
 
-.InputfieldImagesSelect a.InputfieldFileLink + label.InputfieldFileDescription,
-.InputfieldImagesSelect a.InputfieldFileLink + label.InputfieldFileTags {
+.InputfieldImagesSelect a.InputfieldImagesSelecteLink + label.InputfieldImagesSelectDescription,
+.InputfieldImagesSelect a.InputfieldImagesSelectLink + label.InputfieldImagesSelectTags {
     margin-top: 0.5em;
 }
 
-.InputfieldImagesSelect a.InputfieldFileMove span.ui-icon {
+.InputfieldImagesSelect a.InputfieldImagesSelectMove span.ui-icon {
     float: right;
     position: relative;
     top: 2px;
 }
-.InputfieldImage a.InputfieldFileMove {
+.InputfieldImage a.InputfieldImagesSelectMove {
     width: 20px;
     padding-right: 20px;
     visibility: hidden;
 }
 
-.ui-state-hover a.InputfieldFileMove {
+.ui-state-hover a.InputfieldImagesSelectMove {
     visibility: visible;
 }
-.ui-state-error a.InputfieldFileMove {
+.ui-state-error a.InputfieldImagesSelectMove {
     display: none;
 }
 
 
-.InputfieldImagesSelect .InputfieldImage.template {
+.InputfieldImagesSelect .InputfieldImagesSelect.template {
     display: none;
 }
 

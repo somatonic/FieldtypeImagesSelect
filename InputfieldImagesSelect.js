@@ -1,54 +1,84 @@
-$(document).ready(function() {
 
-    /**
-     * Setup a live change event for the delete links
-     *
-     */
+;(function($, config, document){
 
-    if($.browser.msie && $.browser.version < 9) {
+    $(document).ready(function() {
 
-        // $(".InputfieldFileDelete span.ui-icon").live("click", function() {
-        $(".InputfieldFileDelete").on("click", "span.ui-icon", function() {
+        /**
+         * Setup a live change event for the delete links
+         *
+         */
 
-            var input = $(this).prev('input');
-            if(input.is(":checked")){
-                input.removeAttr("checked");
+        if($.browser.msie && $.browser.version < 9) {
+
+            // $(".InputfieldFileDelete span.ui-icon").live("click", function() {
+            $(".InputfieldImagesSelectDelete").on("click", "span.ui-icon", function() {
+
+                var input = $(this).prev('input');
+                if(input.is(":checked")){
+                    input.removeAttr("checked");
+                } else {
+                    input.attr({"checked":"checked"});
+                }
+
+                setInputfieldFileStatus(input);
+
+            });
+
+        } else {
+            // not IE < 9
+            // $(this).find(".InputfieldFileDelete input").live('change', function() {
+            $(document).on('change', '.InputfieldImagesSelectDelete input', function() {
+                // alert("test");
+                setInputfieldFileStatus($(this));
+
+            }).on('dblclick', '.InputfieldImagesSelectDelete', function() {
+                // enable double-click to delete all
+                var $input = $(this).find('input');
+                var $items = $(this).parents('.InputfieldImagesSelectList').find('.InputfieldImagesSelectDelete input');
+                if($input.is(":checked")) $items.removeAttr('checked').change();
+                    else $items.attr('checked', 'checked').change();
+                return false;
+            });
+
+        }
+
+        function setInputfieldFileStatus($t) {
+            if($t.is(":checked")) {
+                // not an error, but we want to highlight it in the same manner
+                $t.parents(".InputfieldImagesSelectInfo").addClass("ui-state-error")
+                    .siblings(".InputfieldImagesSelectData").slideUp("fast");
+
             } else {
-                input.attr({"checked":"checked"});
+                $t.parents(".InputfieldImagesSelectInfo").removeClass("ui-state-error")
+                    .siblings(".InputfieldImagesSelectData").slideDown("fast");
             }
+        }
 
-            setInputfieldFileStatus(input);
 
-        });
+        if(typeof config.LanguageSupport != "undefined") {
+            $(".InputfieldImagesSelectLanguageSupport").each(function() {
+                var $item = $(this).find('.InputfieldImagesSelectDescription:eq(0)');
+                if($item.width() <= 250) $(this).addClass('stacked');
+            });
+        }
 
-    } else {
-        // not IE < 9
-        // $(this).find(".InputfieldFileDelete input").live('change', function() {
-        $(document).on('change', '.InputfieldFileDelete input', function() {
-            setInputfieldFileStatus($(this));
 
-        }).on('dblclick', '.InputfieldFileDelete', function() {
-            // enable double-click to delete all
-            var $input = $(this).find('input');
-            var $items = $(this).parents('.InputfieldImagesSelectList').find('.InputfieldFileDelete input');
-            if($input.is(":checked")) $items.removeAttr('checked').change();
-                else $items.attr('checked', 'checked').change();
+        $(document).on('click', '.InputfieldImagesSelect .InputfieldImagesSelectMove', function() {
+
+            var $li = $(this).parent('p').parent('li');
+            var $ul = $li.parent();
+
+            if($(this).is('.InputfieldImagesSelectMoveTop')) $ul.prepend($li);
+                else $ul.append($li);
+
+            $ul.children('li').each(function(n) {
+                $(this).find('.InputfieldImagesSelectSort').val(n);
+            });
+
             return false;
         });
 
-    }
-
-    function setInputfieldFileStatus($t) {
-        if($t.is(":checked")) {
-            // not an error, but we want to highlight it in the same manner
-            $t.parents(".InputfieldFileInfo").addClass("ui-state-error")
-                .siblings(".InputfieldFileData").slideUp("fast");
-
-        } else {
-            $t.parents(".InputfieldFileInfo").removeClass("ui-state-error")
-                .siblings(".InputfieldFileData").slideDown("fast");
-        }
-    }
+    });
 
     /**
      * Make the lists sortable and hoverable
@@ -56,72 +86,162 @@ $(document).ready(function() {
      */
     function initSortable($fileLists) {
 
+        // console.log("imagesSelect sortable init");
+
         $fileLists.each(function() {
 
             var $this = $(this);
             var qty = $this.children("li").size();
 
-            var $inputfield = $this.closest('.Inputfield')
+            var $inputfield = $this.closest('.Inputfield');
 
             if(qty < 2) {
                 // added to support additional controls when multiple items are present
                 // and to hide them when not present
-                if(qty == 0) $inputfield.addClass('InputfieldFileEmpty').removeClass('InputfieldFileMultiple InputfieldFileSingle');
-                    else $inputfield.addClass('InputfieldFileSingle').removeClass('InputfieldFileEmpty InputfieldFileMultiple');
+                if(qty == 0) $inputfield.addClass('InputfieldImagesSelectEmpty').removeClass('InputfieldImagesSelectMultiple InputfieldImagesSelectSingle');
+                    else $inputfield.addClass('InputfieldImagesSelectSingle').removeClass('InputfieldImagesSelectEmpty InputfieldImagesSelectMultiple');
                 // if we're dealing with a single item list, then don't continue with making it sortable
                 return;
             } else {
-                $this.closest('.Inputfield').removeClass('InputfieldFileSingle InputfieldFileEmpty').addClass('InputfieldFileMultiple');
+                $this.closest('.Inputfield').removeClass('InputfieldImagesSelectSingle InputfieldImagesSelectEmpty').addClass('InputfieldImagesSelectMultiple');
             }
 
             $this.sortable({
                 //axis: 'y',
                 start: function(e, ui) {
-                    ui.item.children(".InputfieldFileInfo").addClass("ui-state-highlight");
+                    ui.item.children(".InputfieldImagesSelectInfo").addClass("ui-state-highlight");
                 },
                 stop: function(e, ui) {
                     $(this).children("li:not(.template)").each(function(n) {
-                        $(this).find(".InputfieldFileSort").val(n);
+                        $(this).find(".InputfieldImagesSelectSort").val(n);
                     });
-                    ui.item.children(".InputfieldFileInfo").removeClass("ui-state-highlight");
+                    ui.item.children(".InputfieldImagesSelectInfo").removeClass("ui-state-highlight");
                     // Firefox has a habit of opening a lightbox popup after a lightbox trigger was used as a sort handle
                     // so we keep a 500ms class here to keep a handle on what was a lightbox trigger and what was a sort
-                    $inputfield.addClass('InputfieldFileJustSorted');
-                    setTimeout(function() { $inputfield.removeClass('InputfieldFileJustSorted'); }, 500);
+                    $inputfield.addClass('InputfieldImagesSelectJustSorted');
+                    setTimeout(function() { $inputfield.removeClass('InputfieldImagesSelectJustSorted'); }, 500);
                 }
             });
 
+
         }).find(".ui-widget-header, .ui-state-default").hover(function() {
-            $(this).addClass('ui-state-hover');
+            // $(this).addClass('ui-state-hover');
         }, function() {
-            $(this).removeClass('ui-state-hover');
+            // $(this).removeClass('ui-state-hover');
         });
     }
 
 
+    function ImagesSelectSearch(){
 
-    /**
-     * MAIN
-     *
-     */
+    // var ImagesSelectSearch = {
 
-    initSortable($(".InputfieldImagesSelectList"));
+        this.init = function(name, url) {
+
+            var that = this;
+
+            that.name = name;
+            that.url = url;
+
+            // that.searchInput= $('#Inputfield_' + name + '_queryImagesSelect');
+            that.resultsMarkupField = $('#Inputfield_' + name + '_resultsMarkupField');
+            that.resultsOutput = $('#' + name + '_resultsOutput');
+            that.spinner = $("<span id='"+name+"_ImagesSearchSpinner'> <i class='fa fa-lg fa-spin fa-spinner'></i></span>");
+            that.resultsMarkupField.find("label").append(that.spinner.hide());
+
+            $("#Inputfield_" + that.name + "_selectorImagesSelect").on("change", function(){
+                // console.log("search: " + $(this).val());
+                that.search($(this).val());
+            });
+
+            // clone add an new image to the list
+            that.resultsOutput.on("click", "button.ImagesSearch_resultAdd", function(e){
+
+                e.preventDefault();
+                var count = $(".Inputfield_"+name).find(".InputfieldImagesSelectItem").length - 1;
+
+                var $template = $(".Inputfield_"+name).find(".InputfieldImagesSelectItem.template").eq(0);
+                var $inputfields = $(".Inputfield_"+name).find("ul.InputfieldImagesSelectList");
+                var $clone = $template.clone();
+
+                var id = $(this).data("id");
+                var nameID = name + "_" + id;
+
+                $clone.find(".InputfieldImagesSelectRemoteImage").attr("name", "remoteimage_" + nameID);
+                $clone.find(".InputfieldImagesSelectRemoteImage").val(id);
+
+                $clone.find(".InputfieldImagesSelectSort").attr("name", "sort_" + nameID);
+                $clone.find(".InputfieldImagesSelectSort").attr("value", count);
+
+                $clone.find(".InputfieldImagesSelectLink").attr("href", $(this).data("url"));
+                $clone.find(".InputfieldImagesSelectLink img").attr("src", $(this).closest('tr').find('img').attr("src"));
+
+                $clone.find(".InputfieldImagesSelectEdit a").attr("href", config.urls.admin + "page/edit/?id="+id);
+
+                $clone.find(".InputfieldImagesSelectName").html($(this).data("basename"));
+
+                $clone.find(".InputfieldImagesSelectDescription textarea").html($(this).data("descr"));
+                $clone.find(".InputfieldImagesSelectDescription label").attr("for", "description_" + nameID);
+                $clone.find(".InputfieldImagesSelectDescription textarea").attr("id", "description_" + nameID);
+                $clone.find(".InputfieldImagesSelectDescription textarea").attr("name", "description_" + nameID);
+
+                $clone.find(".InputfieldImagesSelectDelete input").attr("name", "delete_" + nameID);
+
+                $clone.removeClass("template").appendTo($inputfields);
+                $inputfields.parent().effect("highlight", 500);
 
 
-    if(typeof config.LanguageSupport != "undefined") {
-        $(".InputfieldFileLanguageSupport").each(function() {
-            var $item = $(this).find('.InputfieldFileDescription:eq(0)');
-            if($item.width() <= 250) $(this).addClass('stacked');
-        });
-    }
+                var ids = '';
+                $inputfields.find("li.InputfieldImagesSelectItem:not(.template)").each(function(i){
+                    var $item = $(this).find("input.InputfieldImagesSelectRemoteImage");
+                    ids += $item.val() + ",";
+                });
+                // console.log(ids);
 
-});
+                ids = ids.substr(0, ids.length - 1);
+                var $field = $inputfields.closest("div").find(".InputfieldImagesIds");
+                $field.val(ids);
+                $field.trigger("change");
+
+                initSortable($(".InputfieldImagesSelectList"));
+
+                return false;
+            });
 
 
+        };
 
-// inputfield image
+        this.search = function(selector){
+            // console.log(selector);
+            // console.log(this.name);
+            var that = this;
+            // console.log("..searching");
+            $.ajax({
+                url: that.url,
+                type: "post",
+                data: {selector: selector},
+                beforeSend: function(){
+                    if(selector) { // trigger showIf dependencies only if a selector is present
+                        that.spinner.show();
+                        $("input#Inputfield_" + that.name + "_filterImagesIsSearching").attr("value", 1);
+                        $("input#Inputfield_" + that.name + "_filterImagesIsSearching").trigger("change");
+                    }
+                },
+                success: function(data){
+                    // console.log(data);
+                    if(data){
+                        that.resultsOutput.html(data);
+                    } else {
+                        that.resultsOutput.html();
+                    }
+                    that.spinner.hide();
+                }
 
-$(document).ready(function() {
+            });
+        };
+
+    };
+
 
     var magnificOptions = {
         type: 'image',
@@ -135,217 +255,56 @@ $(document).ready(function() {
         callbacks: {
             open: function() {
                 // for firefox, which launches Magnific after a sort
-                if($(".InputfieldFileJustSorted").size() > 0) this.close();
+                if($(".InputfieldImagesSelectJustSorted").size() > 0) this.close();
             }
         }
     };
 
-    $("a.InputfieldFileLink").magnificPopup(magnificOptions);
 
-    $(document).on('click', '.InputfieldImage .InputfieldFileMove', function() {
+    $(document).ready(function() {
+        // inital init for normal non ajax non repeater inputfields
+        initScripts();
 
-        var $li = $(this).parent('p').parent('li');
-        var $ul = $li.parent();
+        // event scope on pseudo dummy .InputfieldImagesSelectLoader as it contains no .Inputfield
+        // otherwise this gets triggered for each containing .Inputfield
+        $(document).on('reloaded', ".InputfieldImagesSelectLoader", function(event, source) {
+            initScripts();
+        }).on('wiretabclick', function(e, $newTab, $oldTab) {
 
-        if($(this).is('.InputfieldFileMoveTop')) $ul.prepend($li);
-            else $ul.append($li);
+        }).on('opened', '.InputfieldImagesSelect', function() {
+            //console.log('InputfieldImage opened');
 
-        $ul.children('li').each(function(n) {
-            $(this).find('.InputfieldFileSort').val(n);
         });
 
-        return false;
+        function initScripts(){
+            $(".imagesmanager-button:not(.isloaded)").each(function(){
+                var $im_link_container = $(this);
+                var href = $(this).find('a').attr('href');
+                var $link = $(this).find('a');
+                var $button = $(this).find('button');
+                $button.unbind("click");
+                $link.addClass("isloaded");
+                $im_link_container.closest(".InputfieldContent").find(".langTabs").append($im_link_container);
+            });
+
+            initSortable($(".InputfieldImagesSelectList:not(.ui-sortable)"));
+
+            $("a.InputfieldImagesSelectLink").magnificPopup(magnificOptions);
+
+            var ImagesSelectInstances = [];
+
+            $(".InputfieldImagesSelect:not(.islodaded)").each(function(){
+                var url = $(this).find(".ImagesSelectSearch").data("ajax-url");
+                var name = $(this).find(".InputfieldImagesSelectList").data("inputfield-name");
+                ImagesSelectInstances[name] = new ImagesSelectSearch();
+                ImagesSelectInstances[name].init(name, url);
+                $(this).addClass("islodaded");
+            });
+        }
+
     });
 
-
-
-    // var $listToggle = $("<a class='InputfieldImageListToggle HideIfEmpty' href='#'></a>")
-    //     .append("<i class='fa fa-th'></i>");
-    // $(".InputfieldImage .InputfieldHeader").append($listToggle);
-    // $(document).on('click', '.InputfieldImageListToggle', function() {
-    //     var $parent = $(this).parents(".InputfieldImage");
-    //     if($parent.hasClass('InputfieldImageGrid')) unsetGridMode($parent);
-    //         else setGridMode($parent);
-    //     return false;
-    // });
-
-    // $(".InputfieldImage").find(".InputfieldImageDefaultGrid").each(function() {
-    //     setGridMode($(this).parents(".InputfieldImage"));
-    // });
-
-
-
-
-});
-
-
-var ImagesSelectSearch = {
-
-    init: function(name, url) {
-        var that = this;
-
-        that.name = name;
-        that.url = url;
-
-        that.searchInput= $('#Inputfield_' + name + '_queryImagesSelect');
-        that.resultsMarkupField = $('#Inputfield_' + name + '_resultsMarkupField');
-        that.resultsOutput = $('#' + name + '_resultsOutput');
-        that.spinner = $("<span id='"+name+"_ImagesSearchSpinner'> <i class='fa fa-lg fa-spin fa-spinner'></i></span>");
-        that.resultsMarkupField.find("label").append(that.spinner.hide());
-
-        console.log(that.url);
-
-        // capture enter key
-        that.searchInput.on("keydown", function(e) {
-            if(e.keyCode == 13) {
-                e.preventDefault();
-                return false;
-            }
-
-        });
-
-
-        that.searchInput.on("keyup", function(e) {
-            e.preventDefault();
-            var parent = $("[name='" + that.name + "_categoryFilterImagesSelect']").val();
-            parent = parent ? parent : "1";
-            var term = $(this).val();
-            if(term.length > 1) {
-                that.search(term, parent);
-            }
-            return false;
-        });
-
-        $("#Inputfield_" + that.name + "_selectorImagesSelect").on("change", function(){
-            // console.log($(this));
-            that.search($(this).val());
-        });
-
-        // $("select, input", "#" + that.name + "_filterFormImagesSelect").each(function(){
-        //     console.log($(this));
-        // });
-
-
-        // clone add an new image to the list
-        that.resultsOutput.on("click", "button.ImagesSearch_resultAdd", function(e){
-
-            e.preventDefault();
-            var count = $(".Inputfield_"+name).find(".InputfieldFileItem").length - 1;
-
-            var $template = $(".Inputfield_"+name).find(".InputfieldFileItem.template").eq(0);
-            var $inputfields = $(".Inputfield_"+name).find("ul.InputfieldImagesSelectList");
-            var $clone = $template.clone();
-
-            var id = $(this).data("id");
-            var nameID = name + "_" + id;
-
-            $clone.find(".InputfieldFileRemoteImage").attr("name", "remoteimage_" + nameID);
-            $clone.find(".InputfieldFileRemoteImage").val(id);
-
-            $clone.find(".InputfieldFileSort").attr("name", "sort_" + nameID);
-            $clone.find(".InputfieldFileSort").attr("value", count);
-
-            $clone.find(".InputfieldFileLink").attr("href", $(this).data("url"));
-            $clone.find(".InputfieldFileLink img").attr("src", $(this).closest('tr').find('img').attr("src"));
-
-            $clone.find(".InputfieldFileEdit a").attr("href", config.urls.admin + "page/edit/?id="+id);
-
-            $clone.find(".InputfieldFileName").html($(this).data("basename"));
-
-            $clone.find(".InputfieldFileDescription textarea").html($(this).data("descr"));
-            $clone.find(".InputfieldFileDescription label").attr("for", "description_" + nameID);
-            $clone.find(".InputfieldFileDescription textarea").attr("id", "description_" + nameID);
-            $clone.find(".InputfieldFileDescription textarea").attr("name", "description_" + nameID);
-
-            $clone.find(".InputfieldFileDelete input").attr("name", "delete_" + nameID);
-
-            $clone.removeClass("template").appendTo($inputfields);
-            $inputfields.parent().effect("highlight", 500);
-
-
-            var ids = '';
-            $inputfields.find("li.InputfieldFileItem:not(.template)").each(function(i){
-                var $item = $(this).find("input.InputfieldFileRemoteImage");
-                ids += $item.val() + ",";
-            });
-            // console.log(ids);
-
-            ids = ids.substr(0, ids.length - 1);
-            var $field = $inputfields.closest("div").find(".InputfieldImagesIds");
-            $field.val(ids);
-            $field.trigger("change");
-
-            return false;
-        });
-
-
-    },
-
-    search: function(selector){
-        console.log(selector);
-        var that = this;
-        // console.log("..searching");
-        $.ajax({
-            url: that.url,
-            type: "post",
-            data: {selector: selector},
-            beforeSend: function(){
-                that.spinner.show();
-                $("input#Inputfield_" + that.name + "_filterImagesIsSearching").attr("value", 1);
-                $("input#Inputfield_" + that.name + "_filterImagesIsSearching").trigger("change");
-            },
-            success: function(data){
-                // console.log(data);
-                if(data){
-                    that.resultsOutput.html(data);
-                } else {
-                    that.resultsOutput.html();
-                }
-                that.spinner.hide();
-            }
-
-        });
-    }
-
-};
-
-$(document).ready(function() {
-
-
-
-    // $(".ImagesSelectSearch").each(function(i){
-    //     var $search = $(this).find('input[name*="_queryImagesSelect"]');
-
-    //     $search.on("keydown", function(e){
-    //         if(e.keyCode == 13) {
-    //             e.preventDefault();
-    //             return false;
-    //         }
-
-    //     });
-    //     $search.on("keyup", function(e){
-    //         e.preventDefault();
-    //         var term = $(this).val();
-    //         if(term.length > 2){
-    //             ImagesSelectSearch(term);
-    //         }
-
-    //         // do search
-    //         // alert($(this).val());
-    //         return false;
-    //     });
-    // });
-
-
-
-
-});
-
-
-
-
-
-
+})(jQuery, config, document);
 
 
 

@@ -10,14 +10,22 @@ class FieldtypeImagesSelect extends FieldtypeMulti implements Module{
     public static function getModuleInfo() {
         return array(
             'title' => __('Images Select', __FILE__),
-            'version' => 1,
+            'version' => 12,
             'summary' => __('Select remote stored image pages to add to an page', __FILE__),
             'permanent' => false,
             'installs' => array('InputfieldImagesSelect'),
             );
     }
 
-
+    public function init(){
+        $ImagesManagerConfig = $this->wire("modules")->getModuleConfigData("ImagesManager");
+        $this->imageTpl = $ImagesManagerConfig["imagesPageTemplate"];
+        $this->imagesRoot = $ImagesManagerConfig["imagesRoot"];
+        $this->imagesFieldName = $ImagesManagerConfig["imagesFieldName"];
+        if(!$this->imageTpl) throw new WireException("imagesPageTemplate not configured in ImagesManager");
+        if(!$this->imagesRoot) throw new WireException("imagesRoot not configured in ImagesManager");
+        if(!$this->imagesFieldName) throw new WireException("imagesFieldName not configured in ImagesManager");
+    }
 
     public function getBlankValue(Page $page, Field $field) {
         $imagesArray = new RemoteImages;
@@ -76,7 +84,31 @@ class FieldtypeImagesSelect extends FieldtypeMulti implements Module{
         if($value instanceof RemoteImages) return $value;
         $imagesArray = $this->getBlankValue($page, $field);
         if(empty($value)) return $imagesArray;
+
+        // if(!is_array($value) || array_key_exists('data', $value)) $value = array($value);
+
+
         if(!is_array($value)) $value = array($value);
+
+        // if autojoin set on, we get a different value array
+        if(array_key_exists('data', $value)){
+            $new_value = array();
+            foreach($value as $k => $v){
+                // single image
+                if($k == "data" && !is_array($v)) {
+                    $new_value[] = array("data" => $v, "description" => $value['description']);
+                } else if($k == "data" && is_array($v)){
+                    // multiple images
+                    foreach($v as $vkey => $vval) {
+                        $new_value[] = array("data" => $vval, "description" => $value['description'][$vkey]);
+                    }
+                }
+            }
+            $value = $new_value;
+
+        }
+
+
 
         foreach($value as $item) {
 
@@ -84,7 +116,8 @@ class FieldtypeImagesSelect extends FieldtypeMulti implements Module{
 
             $remoteImage = new RemoteImage();
 
-            $imagePage = $this->pages->get((int)$item['data']);
+            $selector = "has_parent={$this->imagesRoot}, template={$this->imageTpl}, id=".(int)$item['data'];
+            $imagePage = $this->wire("pages")->get($selector); //, $this->templates->get("image"));
 
             // image page not found, maybe it got deleted
             if(!$imagePage->id) continue;
@@ -92,14 +125,14 @@ class FieldtypeImagesSelect extends FieldtypeMulti implements Module{
             $imagePage->of(false);
 
             $remoteImage->set("id", $imagePage->id);
-            $remoteImage->set("image", $imagePage->image->first);
+            $remoteImage->set("image", $imagePage->get("$this->imagesFieldName")->first);
 
             foreach($item as $key => $val) {
                 if($key == "data") {
                     $remoteImage->set("imagepage", $imagePage);
                 } else if($key == "description"){
                     if(!strlen($val)) {
-                        $remoteImage->set("description", $imagePage->meta_description);
+                        $remoteImage->set("description", $imagePage->summary);
                     } else {
                         $remoteImage->set("description", $val);
                     }
@@ -109,7 +142,7 @@ class FieldtypeImagesSelect extends FieldtypeMulti implements Module{
 
             }
 
-            $remoteImage->resetTrackChanges(true);
+            $remoteImage->setTrackChanges(true);
             $imagesArray->add($remoteImage);
         }
 

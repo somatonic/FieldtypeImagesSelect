@@ -8,7 +8,7 @@ class InputfieldImagesSelect extends Inputfield implements InputfieldItemList{
     public static function getModuleInfo() {
         return array(
             'title' => __('Images Select', __FILE__),
-            'version' => 1,
+            'version' => 13,
             'summary' => __('Select remote stored image pages to add to an page', __FILE__),
             'permanent' => false,
             'requires' => 'FieldtypeImagesSelect',
@@ -18,14 +18,41 @@ class InputfieldImagesSelect extends Inputfield implements InputfieldItemList{
     public function init() {
         parent::init();
         $this->modules->JqueryMagnific;
-        $this->set('itemClass', 'InputfieldFileItem InputfieldImage ui-widget');
+        $this->modules->JqueryUI->use("modal");
+        $this->set('itemClass', 'InputfieldImagesSelectItem InputfieldImagesSelect ui-widget');
 
+        $ImagesManagerConfig = $this->wire("modules")->getModuleConfigData("ImagesManager");
+        $this->imageTpl = $ImagesManagerConfig["imagesPageTemplate"];
+        $this->imagesRoot = $ImagesManagerConfig["imagesRoot"];
+        $this->imagesFieldName = $ImagesManagerConfig["imagesFieldName"];
+        if(!$this->imageTpl) throw new WireException("imagesPageTemplate not configured in ImagesManager");
+        if(!$this->imagesRoot) throw new WireException("imagesRoot not configured in ImagesManager");
+        if(!$this->imagesFieldName) throw new WireException("imagesFieldName not configured in ImagesManager");
     }
 
     protected function pagefileId(RemoteImage $remoteImage) {
         return $this->name . "_" . $remoteImage->id;
     }
 
+    public function renderReady(Inputfield $parent = null, $renderValueMode = false) {
+        $modules = $this->wire("modules");
+        $modules->JqueryUI->use("modal");
+
+        $modules->loadModuleFileAssets('InputfieldSelector');
+
+        $moduleID = $this->wire("modules")->getModuleId("ProcessImagesSearch");
+        $url = $this->pages->get("template=admin, process=$moduleID")->url;
+
+        if(!empty($this->config->js("ImagesSelect"))) {
+            $_jsConfig = $this->config->js("ImagesSelect");
+            $_jsConfig[$this->name] = array("url" => $url);
+            $this->config->js("ImagesSelect", $_jsConfig);
+        } else {
+            $this->config->js("ImagesSelect", array($this->name => array("url" => $url)));
+        }
+
+        return parent::renderReady($parent, $renderValueMode);
+    }
 
     public function ___render() {
         $out = '';
@@ -34,7 +61,7 @@ class InputfieldImagesSelect extends Inputfield implements InputfieldItemList{
 
         // if(!count($this->value)) return "<p>" . $this->_('There are currently no items to display.') . "</p>";
 
-        $out = "\n<ul class='InputfieldImagesSelectList ui-helper-clearfix'>";
+        $out = "\n<ul class='InputfieldImagesSelectList ui-helper-clearfix' data-inputfield-name='$this->name'>";
         foreach($this->value as $image) {
             $out .= $this->renderItemWrap($this->renderItem($image, $n++));
             $ids[] = $image->id;
@@ -46,13 +73,15 @@ class InputfieldImagesSelect extends Inputfield implements InputfieldItemList{
         $out .= "<input class='InputfieldImagesIds' type='text' name='{$this->name}_imagesIds' id='{$this->name}_imagesIds' value='".implode($ids, ",")."'>";
         $out .= $this->renderAddImages();
 
+        $out .= "<div class='Inputfield InputfieldImagesSelectLoader InputfieldHidden'></div>";
+
         return $out;
     }
 
 
     protected function renderItemWrap($out, $template = false) {
         $class = $template ? " template": "";
-        return  "\n\t<li class='{$this->itemClass}{$class}'>$out\n\t</li>";
+        return  "\n\t<li class='Inputfield {$this->itemClass}{$class}'>$out\n\t</li>";
     }
 
 
@@ -61,8 +90,8 @@ class InputfieldImagesSelect extends Inputfield implements InputfieldItemList{
             $out = $this->renderItemMarkup(0, 0, "", "", "", "", "", "", "", 0);
         } else {
             $slug = $this->pagefileId($file);
-            $pagefile = $file->imagepage->image->first;
-            $thumb = $file->imagepage->image->first->size(0,100);
+            $pagefile = $file->imagepage->get($this->imagesFieldName)->first;
+            $thumb = $file->imagepage->get($this->imagesFieldName)->first->size(0,100);
             $description = $file->description;
             $out = $this->renderItemMarkup($file->id, $slug, $pagefile->basename, $pagefile->filesizeStr, $pagefile->width, $pagefile->height, $pagefile->url, $thumb->url, $description, $n);
         }
@@ -74,22 +103,25 @@ class InputfieldImagesSelect extends Inputfield implements InputfieldItemList{
         $moduleID = $this->modules->getModuleId("ProcessPageEdit");
         $editUrl = $this->pages->get("process=$moduleID")->url;
 
-        $out =  "\n\t\t<p class='InputfieldFileInfo InputfieldItemHeader ui-widget ui-widget-header'>" .
+        $txtOrginalLink = $this->_("Edit original image");
+        $txtDelete = $this->_("Delete");
+
+        $out =  "\n\t\t<p class='InputfieldImagesSelectInfo InputfieldItemHeader'>" .
             "\n\t\t\t<span class='ui-icon ui-icon-arrowthick-2-n-s HideIfSingle'></span>" .
             "\n\t\t\t<span class='ui-icon ui-icon-arrowthick-1-e HideIfMultiple'></span>" .
-            "\n\t\t\t<span class='InputfieldFileName'>{$basename}</span> " .
-            "\n\t\t\t<span class='InputfieldFileStats'>&bull; {$filesizeStr} &bull; {$width}x{$height}</span> " .
-            "\n\t\t\t<label class='InputfieldFileDelete'><input type='checkbox' name='delete_$slug' value='1' /><span class='ui-icon ui-icon-trash'>Delete</span></label>" .
-            "\n\t\t\t<a class='InputfieldFileMove InputfieldFileMoveBottom' href='#'><span class='ui-icon ui-icon-arrowthickstop-1-s'></span></a> " .
-            "\n\t\t\t<a class='InputfieldFileMove InputfieldFileMoveTop' href='#'><span class='ui-icon ui-icon-arrowthickstop-1-n'></span></a> " .
+            "\n\t\t\t<span class='InputfieldImagesSelectName'>{$basename}</span> " .
+            "\n\t\t\t<span class='InputfieldImagesSelectStats'>&bull; {$filesizeStr} &bull; {$width}x{$height}</span> " .
+            "\n\t\t\t<label class='InputfieldImagesSelectDelete'><input type='checkbox' name='delete_$slug' value='1' /><span class='ui-icon ui-icon-trash'>$txtDelete</span></label>" .
+            "\n\t\t\t<a class='InputfieldImagesSelectMove InputfieldImagesSelectMoveBottom' href='#'><span class='ui-icon ui-icon-arrowthickstop-1-s'></span></a> " .
+            "\n\t\t\t<a class='InputfieldImagesSelectMove InputfieldImagesSelectMoveTop' href='#'><span class='ui-icon ui-icon-arrowthickstop-1-n'></span></a> " .
             "\n\t\t</p>" .
-            "\n\t\t<p class='InputfieldFileData ui-widget ui-widget-content'>" .
-            "\n\t\t\t<a class='InputfieldFileLink' target='_blank' href='{$url}'><img src='{$thumbUrl}' alt='{$basename}' /></a>" .
-            "\n\t\t\t<span class='InputfieldFileDescription'><label for='description_$slug' class='detail'>Description</label><textarea id='description_$slug' name='description_$slug' rows='2'>$description</textarea></span>" .
-            "\n\t\t\t<span class='InputfieldFileEdit'><a href='{$editUrl}?id={$id}' target='_blank'><i class='fa fa-edit'></i> Edit original image</a></span>" .
-            "\n\t\t\t<input class='InputfieldFileSort' type='text' name='sort_$slug' value='$n' />" .
-            "\n\t\t\t<input class='InputfieldFileRemoteImage' type='text' name='remoteimage_$slug' value='{$id}' />" .
-            "\n\t\t</p>";
+            "\n\t\t<div class='InputfieldImagesSelectData InputfieldContent'>" .
+            "\n\t\t\t<a class='InputfieldImagesSelectLink' target='_blank' href='{$url}'><img src='{$thumbUrl}' alt='{$basename}' /></a>" .
+            //"\n\t\t\t<span class='InputfieldImagesSelectDescription'><label for='description_$slug' class='detail'>Description</label><textarea id='description_$slug' name='description_$slug' rows='2'>$description</textarea></span>" .
+            "\n\t\t\t<span class='InputfieldImagesSelectEdit'><a href='{$editUrl}?id={$id}' class='pw-modal' data-buttons='#submit_save'><i class='fa fa-edit'></i> $txtOrginalLink</a></span>" .
+            "\n\t\t\t<input class='InputfieldImagesSelectSort' type='text' name='sort_$slug' value='$n' />" .
+            "\n\t\t\t<input class='InputfieldImagesSelectRemoteImage' type='text' name='remoteimage_$slug' value='{$id}' />" .
+            "\n\t\t</div>";
 
         return $out;
 
@@ -98,7 +130,10 @@ class InputfieldImagesSelect extends Inputfield implements InputfieldItemList{
     public function renderAddImages() {
         $out = '';
 
-        $out .= "<div class='ImagesSelectSearch ui-helper-clearfix'>";
+        $moduleID = $this->wire("modules")->getModuleId("ProcessImagesSearch");
+        $url = $this->pages->get("template=admin, process=$moduleID")->url;
+
+        $out .= "<div class='ImagesSelectSearch ui-helper-clearfix' data-ajax-url='$url'>";
         // $out .= "<div class='InputfieldContent ui-widget ui-widget-content'>";
         // $out .= "<p><a href='#'>Neues Bild hinzufügen</a></p>";
         $out .= $this->renderImagesSearchForm()->render();
@@ -121,12 +156,13 @@ class InputfieldImagesSelect extends Inputfield implements InputfieldItemList{
 
         $field = $this->modules->InputfieldSelector;
         $field->attr("name", $this->name . "_selectorImagesSelect");
-        $field->initValue = "template=image, sort=-modified";
+        $field->initValue = "template={$this->imageTpl}, sort=-modified";
         $field->value = "title%=";
         $field->showInitValue = true;
-        $field->counter = false;
+        $field->counter = true;
         $field->preview = false;
         $field->label = $this->_("Filter");
+        $field->showFieldLabels = 1;
         $field->columnWidth = 100;
         $fieldset->add($field);
 
@@ -150,28 +186,38 @@ class InputfieldImagesSelect extends Inputfield implements InputfieldItemList{
         $field->attr("value", 0);
         $fieldset->add($field);
 
-        $moduleID = $this->modules->getModuleId("ProcessImagesSearch");
-        $url = $this->pages->get("process=$moduleID")->url;
+        $moduleID = $this->wire("modules")->getModuleId("ProcessImagesSearch");
+        $url = $this->pages->get("template=admin, process=$moduleID")->url;
+
         $field = $this->modules->InputfieldMarkup;
         $field->attr("name", $this->name . "_resultsMarkupField");
         $field->label = $this->_("Result");
         $field->showIf = $this->name . "_filterImagesIsSearching>0";
-        $field->value = "<div id='{$this->name}_resultsOutput'>...</div>
-                <script>
-                    // init the ajax search field
-                    $(document).ready(function() {
-                        ImagesSelectSearch.init('{$this->name}', '$url');
-                    });
-                </script>";
+        $field->value = "<div id='{$this->name}_resultsOutput'>...</div>";
         $fieldset->add($field);
         $wrapper->add($fieldset);
+
+        // add config js to init search form from InputfieldImagesSelect.js
+        // $this->config->js("ImagesSelect", array($this->name => array("url" => $url)));
+
+        // add config js to init search form from InputfieldImagesSelect.js
+        if(!empty($this->config->js("ImagesSelect"))) {
+            $_jsConfig = $this->config->js("ImagesSelect");
+            $_jsConfig[$this->name] = array("url" => $url);
+            $this->config->js("ImagesSelect", $_jsConfig);
+        } else {
+            $this->config->js("ImagesSelect", array($this->name => array("url" => $url)));
+        }
 
         if($this->modules->isInstalled("ImagesManager")){
             $this->modules->get("ImagesManager");
             if($this->user->isSuperuser() || $this->user->hasPermission("images-manager")){
                 $href = $this->pages->get(2)->find('name=imagesmanager, include=all')->first()->url;
                 $btn = $this->modules->get('InputfieldButton');
-                $btn->href = $href;
+                // $btn->href = $href . "?modal=1";
+                $btn->attr("data-href", $href . "?modal=1");
+                $btn->attr("data-buttons", "button");
+                $btn->attr("class", $btn->attr("class") . " pw-modal-large pw-modal");
                 $btn->attr('id','imagesmanager_' . $this->name);
                 $btn->wrapClass = "imagesmanager-button"; // for js to trigger modal
                 $btn->value = $this->_('Images Manager');
